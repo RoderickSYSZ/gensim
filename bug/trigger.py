@@ -1,4 +1,5 @@
 import os
+import os
 import logging
 
 from gensim.models import FastText
@@ -27,8 +28,12 @@ class EpochSaver(CallbackAny2Vec):
 class SentenceIter:
     def __iter__(self):
         import codecs
-        with codecs.open("data.txt", "r", 'utf-8', errors='replace') as f:
-            for line in f:
+        import os.path as P
+        curr_dir = P.dirname(P.abspath(__file__))
+        with codecs.open(P.join(curr_dir, "data.txt"), "r", 'utf-8', errors='replace') as f:
+            for i, line in enumerate(f):
+                if i > 100:
+                    break
                 yield line[:-1].split(" ")
 
 if __name__ == "__main__":
@@ -45,5 +50,5 @@ if __name__ == "__main__":
         workers=num_workers,
         iter=5,
         negative=20,
-        callbacks=[EpochSaver("./checkpoints/fasttext_eng_tweets")]
+        # callbacks=[EpochSaver("./checkpoints/fasttext_eng_tweets")]
     )
