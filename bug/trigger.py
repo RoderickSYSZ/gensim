@@ -1,6 +1,7 @@
-import os
-import os
+import codecs
 import logging
+import os
+import os.path as P
 
 from gensim.models import FastText
 from gensim.models.callbacks import CallbackAny2Vec
@@ -25,24 +26,30 @@ class EpochSaver(CallbackAny2Vec):
             os.remove(os.path.join(self.savedir, "model_fastText_web_kw_sm{}_epoch.gz".format(self.epoch - 1)))
         self.epoch += 1
 
+
 class SentenceIter:
+    def __init__(self, filename):
+        self.filename = filename
+
     def __iter__(self):
-        import codecs
-        import os.path as P
         curr_dir = P.dirname(P.abspath(__file__))
-        with codecs.open(P.join(curr_dir, "data.txt"), "r", 'utf-8', errors='replace') as f:
-            for i, line in enumerate(f):
-                if i > 100:
-                    break
-                yield line[:-1].split(" ")
+        with codecs.open(P.join(curr_dir, self.filename), "r", 'utf-8', errors='replace') as fin:
+            for line in fin:
+                words_bad = line[:-1].split(" ")  # Yielding this causes a segfault
+                words_good = line.rstrip().split(' ')  # Yielding this is OK
+                logging.debug('words_bad: %r', words_bad)
+                logging.debug('words_good: %r', words_good)
+                logging.debug('---')
+                yield words_good
 
-if __name__ == "__main__":
 
+def main():
    logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
    num_workers = os.cpu_count()
    model = FastText(
-        SentenceIter(),
+        # SentenceIter("data.txt"),  # This always segfaults
+        SentenceIter("data-example.txt"),  # This works when the iterator yields words_good
         sg=1,
         size=100,
         window=3,
@@ -52,3 +59,7 @@ if __name__ == "__main__":
         negative=20,
         # callbacks=[EpochSaver("./checkpoints/fasttext_eng_tweets")]
     )
+
+
+if __name__ == "__main__":
+    main()
