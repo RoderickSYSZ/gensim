@@ -28,13 +28,16 @@ class EpochSaver(CallbackAny2Vec):
 
 
 class SentenceIter:
-    def __init__(self, filename):
+    def __init__(self, filename, lines=None):
         self.filename = filename
+        self.lines = lines
 
     def __iter__(self):
         curr_dir = P.dirname(P.abspath(__file__))
         with codecs.open(P.join(curr_dir, self.filename), "r", 'utf-8', errors='replace') as fin:
-            for line in fin:
+            for i, line in enumerate(fin):
+                if self.lines and i > self.lines:
+                    break
                 words_bad = line[:-1].split(" ")  # Yielding this causes a segfault
                 words_good = line.rstrip().split(' ')  # Yielding this is OK
                 logging.debug('words_bad: %r', words_bad)
@@ -44,21 +47,25 @@ class SentenceIter:
 
 
 def main():
-   logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
+    logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
-   num_workers = os.cpu_count()
-   model = FastText(
-        # SentenceIter("data.txt"),  # This always segfaults
-        SentenceIter("data-example.txt"),  # This works when the iterator yields words_good
+    num_workers = os.cpu_count()
+    model = FastText(
+        SentenceIter("data.txt", lines=10000),  # This always segfaults
+        # SentenceIter("data-example.txt"),  # This works when the iterator yields words_good
         sg=1,
+        # sg=0,
         size=100,
         window=3,
         min_count=5,
         workers=num_workers,
         iter=5,
         negative=20,
-        # callbacks=[EpochSaver("./checkpoints/fasttext_eng_tweets")]
+        callbacks=[EpochSaver("./checkpoints/fasttext_eng_tweets")]
     )
+
+    for x in model.most_similar('apple'):
+        print(x)
 
 
 if __name__ == "__main__":
